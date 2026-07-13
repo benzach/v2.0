@@ -1,0 +1,30 @@
+# Your job search criteria. The filter engine (core/filters.py) uses these
+# to decide which scraped jobs are relevant enough to save + email about.
+
+# A job matches if its title OR description contains ANY of these (case-insensitive).
+keywords:
+  - "project officer"
+  - "policy officer"
+  - "programme officer"
+  - "project manager"
+
+# A job is excluded if title OR description contains ANY of these,
+# even if it matched a keyword above. Checked after keyword matching.
+exclude_keywords:
+  - "unpaid"
+  - "volunteer only"
+
+# If set, job location must contain at least one of these (case-insensitive).
+# Leave empty (`locations: []`) to disable location filtering entirely.
+locations:
+  - "london"
+  - "remote"
+  - "hybrid"
+
+# Optional minimum salary filter. Jobs with no parsable salary are kept
+# by default (better to over-include than silently drop unparsed jobs).
+min_salary_gbp: null
+
+# How many days back a job's "posted" date can be and still count as relevant
+# (only used if a site/scraper exposes reliable posted dates).
+max_age_days: 14

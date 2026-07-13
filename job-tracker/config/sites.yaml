@@ -1,0 +1,73 @@
+# List of sites to scrape.
+#
+# type: "static"  -> Requests + BeautifulSoup (fast, works for server-rendered HTML)
+# type: "dynamic" -> Playwright (slower, needed for JS-rendered content or bot-checks)
+# type: "rss"     -> feedparser (best case — no HTML scraping needed at all)
+#
+# For static/dynamic sites, selectors are CSS selectors relative to job_container.
+
+- name: "charityjob"
+  url: "https://www.charityjob.co.uk/project-officer-jobs-in-london"
+  type: "static"
+  enabled: true
+  selectors:
+    # Each job result is inside a heading link like:
+    # <h2><a href="...">Job Title</a></h2> followed by org/location text
+    job_container: "h2 a[href*='/jobs/']"
+    title: null          # the container itself is the title link
+    link: null            # href comes from the container
+    location: null        # not reliably separable via static selectors; captured in raw text
+  notes: >
+    Server-rendered, no JS needed. Selector targets job title links directly
+    since CharityJob's DOM doesn't cleanly separate title/org/location into
+    distinct classes on this listing page. The scraper extracts surrounding
+    text for org + location. Verify selectors periodically — CharityJob does
+    redesign occasionally.
+
+- name: "w4mpjobs"
+  url: "https://www.w4mpjobs.org/RSS.aspx"
+  type: "rss"
+  enabled: true
+  notes: >
+    w4mpjobs publishes an official RSS feed — far more reliable than scraping
+    their ASP.NET postback-driven search page. Use this instead of HTML
+    scraping. Feed appears to include location/org info in the description.
+
+- name: "civil-service-jobs"
+  url: "https://www.civilservicejobs.service.gov.uk/csr/jobs.cgi?jcode=&location=London"
+  type: "dynamic"
+  enabled: false
+  selectors:
+    job_container: "TODO"
+    title: "TODO"
+    link: "TODO"
+    location: "TODO"
+  notes: >
+    BLOCKED IN TESTING. Site shows a "Quick check needed" bot-verification
+    page requiring JS and a checkbox click before content loads. Disabled by
+    default. To attempt: set enabled true, run with Playwright locally, and
+    add logic in dynamic_scraper.py to detect + click the verification
+    checkbox before scraping. May still fail if it's a Cloudflare-style
+    challenge that fingerprints headless browsers. Consider checking if
+    Civil Service Jobs offers an official feed/API before investing more
+    time here.
+
+- name: "guardian-jobs"
+  url: "https://jobs.theguardian.com/jobs/policy/london-greater-/"
+  type: "dynamic"
+  enabled: false
+  selectors:
+    job_container: "TODO"
+    title: "TODO"
+    link: "TODO"
+    location: "TODO"
+  notes: >
+    BLOCKED IN TESTING — automated fetch was rejected outright. Disabled by
+    default. Needs local Playwright testing to see if a real browser
+    fingerprint gets through. Check Guardian Jobs' robots.txt and terms
+    before investing further effort; some job boards explicitly prohibit
+    scraping and this may be one of them.
+
+# Add remaining ~26 sites here following the same pattern once you have
+# their URLs. Send me the URLs and I'll inspect each one and fill in
+# working selectors, same as above.
