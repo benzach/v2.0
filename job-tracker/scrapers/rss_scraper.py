@@ -7,6 +7,7 @@ consumed programmatically.
 import feedparser
 
 from core.models import JobListing
+from core.parsing import detect_contract_type
 from scrapers.base import BaseScraper
 
 
@@ -34,6 +35,7 @@ class RSSScraper(BaseScraper):
                     url=url,
                     description=description,
                     posted_date=posted,
+                    contract_type=detect_contract_type(title, description),
                 )
             )
         return jobs
