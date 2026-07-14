@@ -85,6 +85,10 @@ for col in text_cols:
 
 df["scraped_at"] = pd.to_datetime(df["scraped_at"], errors="coerce")
 
+with st.expander("Debug info (temporary — for troubleshooting)"):
+    st.write("Columns in loaded data:", list(df.columns))
+    st.write("Row count:", len(df))
+
 # --- Top-line metrics ---------------------------------------------------
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total jobs tracked", len(df))
@@ -148,6 +152,17 @@ if contract_filter:
     ]
 
 if min_salary:
+    # Belt-and-suspenders: guarantee 'salary' exists right before use,
+    # regardless of anything upstream. If you're seeing the diagnostic
+    # expander below, something removed this column earlier — check its
+    # output and share it.
+    if "salary" not in filtered.columns:
+        st.error(
+            "Diagnostic: 'salary' column missing from data at filter time. "
+            f"Columns present: {list(filtered.columns)}"
+        )
+        filtered["salary"] = ""
+
     # Best-effort: pull first £ figure out of the salary string.
     def extract_salary(s):
         import re
