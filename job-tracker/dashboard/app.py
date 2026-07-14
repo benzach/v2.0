@@ -72,6 +72,17 @@ for col, default in [
     if col not in df.columns:
         df[col] = default
 
+# Some jobs (especially older ones scraped before certain fields existed)
+# have NULL values in the database, which pandas silently converts to NaN
+# (a float) rather than empty text. Text operations like membership checks
+# or .str.contains() then crash because you can't run those against a
+# float. Force all text columns to actual strings so filters below never
+# have to deal with NaN.
+text_cols = ["title", "organisation", "location", "salary", "contract_type", "description", "url", "site"]
+for col in text_cols:
+    if col in df.columns:
+        df[col] = df[col].fillna("").astype(str)
+
 df["scraped_at"] = pd.to_datetime(df["scraped_at"], errors="coerce")
 
 # --- Top-line metrics ---------------------------------------------------
@@ -132,7 +143,7 @@ if location_query:
 if contract_filter:
     filtered = filtered[
         filtered["contract_type"].apply(
-            lambda v: any(tag in (v or "") for tag in contract_filter)
+            lambda v: any(tag in v for tag in contract_filter)
         )
     ]
 
