@@ -12,6 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from core.models import JobListing
+from core.parsing import detect_contract_type
 from scrapers.base import BaseScraper
 
 HEADERS = {
@@ -83,14 +84,28 @@ class StaticScraper(BaseScraper):
             if not title:
                 continue
 
-            # org/location typically appears in the sibling element right
-            # after the title's containing block (e.g. the <p> after the <h2>)
+            # org/location/salary/contract-type typically appear in the two
+            # or three sibling elements right after the title's containing
+            # block (e.g. the <p> tags after the <h2>). We grab a few and
+            # scan them for whatever's useful, since exact tag structure
+            # per field isn't stable enough to select precisely.
             org_location = ""
+            salary = ""
+            extra_text_parts = []
             h2 = link.find_parent("h2") or link.find_parent()
             if h2:
                 sibling = h2.find_next_sibling()
-                if sibling:
-                    org_location = sibling.get_text(strip=True)
+                count = 0
+                while sibling and count < 3:
+                    text = sibling.get_text(strip=True)
+                    if text:
+                        extra_text_parts.append(text)
+                        if count == 0:
+                            org_location = text
+                        elif "£" in text and not salary:
+                            salary = text
+                    sibling = sibling.find_next_sibling()
+                    count += 1
 
             jobs.append(
                 JobListing(
@@ -98,6 +113,8 @@ class StaticScraper(BaseScraper):
                     title=title,
                     url=full_url,
                     location=org_location,
+                    salary=salary,
+                    contract_type=detect_contract_type(title, *extra_text_parts),
                 )
             )
         return jobs
