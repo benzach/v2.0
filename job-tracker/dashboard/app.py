@@ -46,6 +46,32 @@ if not rows:
     st.stop()
 
 df = pd.DataFrame([dict(r) for r in rows])
+
+# Defensive: if the DB hasn't been migrated to the latest schema yet
+# (e.g. core/database.py update hasn't been deployed), fill in sensible
+# defaults for newer columns instead of crashing the whole dashboard.
+missing_cols = [c for c in ["contract_type", "matched_criteria"] if c not in [k for k in dict(rows[0]).keys()]]
+if missing_cols:
+    st.warning(
+        f"Your database is missing column(s): {', '.join(missing_cols)}. "
+        f"This means core/database.py on GitHub hasn't been updated to the "
+        f"latest version yet (it should auto-migrate the DB on next load "
+        f"once it is). Filters relying on these fields won't be accurate "
+        f"until then."
+    )
+
+for col, default in [
+    ("contract_type", ""),
+    ("matched_criteria", 0),
+    ("notified", 0),
+    ("salary", ""),
+    ("organisation", ""),
+    ("location", ""),
+    ("description", ""),
+]:
+    if col not in df.columns:
+        df[col] = default
+
 df["scraped_at"] = pd.to_datetime(df["scraped_at"], errors="coerce")
 
 # --- Top-line metrics ---------------------------------------------------
