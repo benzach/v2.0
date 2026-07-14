@@ -1,6 +1,11 @@
 """
-Orchestrator: scrape all enabled sites -> filter -> save new jobs to DB ->
-email a digest of what's new.
+Orchestrator: scrape all enabled sites -> save ALL of them to the DB ->
+determine which are new -> filter those against saved criteria -> email a
+digest of what's new AND matches.
+
+As of the dashboard update, every scraped job gets saved (not just ones
+matching search_criteria.yaml) so the dashboard can filter across
+everything live. Only new jobs that also match criteria trigger an email.
 
 Usage:
     python main.py                          # full run
@@ -38,7 +43,7 @@ def run(dry_run: bool = False, only_site: str | None = None) -> int:
         print("No enabled scrapers found (check config/sites.yaml).", file=sys.stderr)
         return 1
 
-    all_new_jobs = []
+    all_new_and_matched = []
     failures = []
 
     for scraper in scrapers:
@@ -52,21 +57,27 @@ def run(dry_run: bool = False, only_site: str | None = None) -> int:
             failures.append(scraper.name)
             continue
 
-        matched = filter_jobs(jobs, criteria)
-        print(f"  -> {len(matched)} matched search criteria")
-
-        new_jobs = db.save_new_jobs(matched)
+        # Save EVERYTHING scraped (dedup handles repeats) so the dashboard
+        # has the full picture, regardless of your current search criteria.
+        new_jobs = db.save_new_jobs(jobs)
         print(f"  -> {len(new_jobs)} are new (not seen before)")
-        all_new_jobs.extend(new_jobs)
 
-    print(f"\nTotal new jobs across all sites: {len(all_new_jobs)}")
+        # Of the new ones, figure out which match your saved criteria —
+        # that subset is what's email-worthy.
+        matched = filter_jobs(new_jobs, criteria)
+        db.mark_matched(matched)
+        print(f"  -> {len(matched)} of those match search criteria")
+
+        all_new_and_matched.extend(matched)
+
+    print(f"\nTotal new + matching jobs across all sites: {len(all_new_and_matched)}")
     if failures:
         print(f"Sites that failed this run: {', '.join(failures)}", file=sys.stderr)
 
-    if all_new_jobs:
-        sent = send_digest(all_new_jobs, dry_run=dry_run)
+    if all_new_and_matched:
+        sent = send_digest(all_new_and_matched, dry_run=dry_run)
         if sent and not dry_run:
-            db.mark_notified(all_new_jobs)
+            db.mark_notified(all_new_and_matched)
 
     # Non-zero exit if every single site failed (signals a real problem to
     # GitHub Actions), but not if only some failed (partial success is fine).
