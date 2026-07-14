@@ -12,6 +12,7 @@ class JobListing:
     organisation: str = ""
     location: str = ""
     salary: str = ""
+    contract_type: str = ""         # e.g. "Full-time, Permanent" — best-effort, see core/parsing.py
     description: str = ""
     posted_date: str = ""           # raw string as scraped; parsing is best-effort
     scraped_at: str = field(
