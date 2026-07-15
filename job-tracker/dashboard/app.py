@@ -127,8 +127,24 @@ with f3:
 
 filtered = df.copy()
 
+# Guards against a pandas quirk: boolean-indexing a DataFrame that has
+# already been narrowed to zero rows can silently drop ALL columns as a
+# side effect (confirmed locally — happens once any filter above returns
+# no matches, e.g. filtering by location when a site never populates that
+# field). Restoring the expected columns after every step prevents that
+# from cascading into a crash on a later filter or the final display.
+EXPECTED_COLUMNS = list(df.columns)
+
+
+def _restore_columns(frame):
+    for col in EXPECTED_COLUMNS:
+        if col not in frame.columns:
+            frame[col] = pd.NA
+    return frame
+
+
 if site_filter:
-    filtered = filtered[filtered["site"].isin(site_filter)]
+    filtered = _restore_columns(filtered[filtered["site"].isin(site_filter)])
 
 if keyword:
     kw = keyword.lower()
@@ -137,32 +153,23 @@ if keyword:
         | filtered["organisation"].str.lower().str.contains(kw, na=False)
         | filtered["description"].str.lower().str.contains(kw, na=False)
     )
-    filtered = filtered[mask]
+    filtered = _restore_columns(filtered[mask])
 
 if location_query:
-    filtered = filtered[
-        filtered["location"].str.lower().str.contains(location_query.lower(), na=False)
-    ]
+    filtered = _restore_columns(
+        filtered[filtered["location"].str.lower().str.contains(location_query.lower(), na=False)]
+    )
 
 if contract_filter:
-    filtered = filtered[
-        filtered["contract_type"].apply(
-            lambda v: any(tag in v for tag in contract_filter)
-        )
-    ]
+    filtered = _restore_columns(
+        filtered[
+            filtered["contract_type"].apply(
+                lambda v: any(tag in v for tag in contract_filter)
+            )
+        ]
+    )
 
 if min_salary:
-    # Belt-and-suspenders: guarantee 'salary' exists right before use,
-    # regardless of anything upstream. If you're seeing the diagnostic
-    # expander below, something removed this column earlier — check its
-    # output and share it.
-    if "salary" not in filtered.columns:
-        st.error(
-            "Diagnostic: 'salary' column missing from data at filter time. "
-            f"Columns present: {list(filtered.columns)}"
-        )
-        filtered["salary"] = ""
-
     # Best-effort: pull first £ figure out of the salary string.
     def extract_salary(s):
         import re
@@ -174,31 +181,31 @@ if min_salary:
     filtered["_parsed_salary"] = filtered["salary"].apply(extract_salary)
     # Keep unparsed salaries too, same "don't silently drop" philosophy as
     # the email filter — only exclude if we successfully parsed a LOWER number.
-    filtered = filtered[
-        filtered["_parsed_salary"].isna() | (filtered["_parsed_salary"] >= min_salary)
-    ]
-    filtered = filtered.drop(columns=["_parsed_salary"])
+    filtered = _restore_columns(
+        filtered[
+            filtered["_parsed_salary"].isna() | (filtered["_parsed_salary"] >= min_salary)
+        ]
+    )
+    filtered = filtered.drop(columns=["_parsed_salary"], errors="ignore")
 
 if only_matched:
-    filtered = filtered[filtered["matched_criteria"] == 1]
+    filtered = _restore_columns(filtered[filtered["matched_criteria"] == 1])
 
 st.divider()
 st.subheader(f"{len(filtered)} listing(s)")
 
+# Final belt-and-suspenders: guarantee every column the display needs
+# exists, no matter what happened above.
+DISPLAY_COLUMNS = [
+    "title", "organisation", "location", "salary", "contract_type",
+    "site", "matched_criteria", "scraped_at", "url",
+]
+for col in DISPLAY_COLUMNS:
+    if col not in filtered.columns:
+        filtered[col] = pd.NA
+
 st.dataframe(
-    filtered[
-        [
-            "title",
-            "organisation",
-            "location",
-            "salary",
-            "contract_type",
-            "site",
-            "matched_criteria",
-            "scraped_at",
-            "url",
-        ]
-    ].sort_values("scraped_at", ascending=False),
+    filtered[DISPLAY_COLUMNS].sort_values("scraped_at", ascending=False),
     use_container_width=True,
     hide_index=True,
     column_config={
