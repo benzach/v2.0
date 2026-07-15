@@ -4,11 +4,26 @@ Far more reliable than HTML scraping: no selectors to maintain, no risk of
 being blocked as a bot, and the site explicitly intends this data to be
 consumed programmatically.
 """
+import re
+
 import feedparser
 
 from core.models import JobListing
 from core.parsing import detect_contract_type
 from scrapers.base import BaseScraper
+
+# w4mpjobs (and similarly-structured feeds) tend to embed location/salary
+# as plain text within the description rather than as separate RSS fields
+# — e.g. "Location: London. Salary: £33,840." Best-effort extraction only;
+# if a feed doesn't follow this pattern, these just come back empty rather
+# than breaking anything (dashboard filters degrade gracefully either way).
+LOCATION_PATTERN = re.compile(r"Location:\s*([^.\n]+)", re.IGNORECASE)
+SALARY_PATTERN = re.compile(r"Salary:\s*([^.\n]+)", re.IGNORECASE)
+
+
+def _extract_field(pattern: re.Pattern, text: str) -> str:
+    match = pattern.search(text)
+    return match.group(1).strip() if match else ""
 
 
 class RSSScraper(BaseScraper):
@@ -35,6 +50,8 @@ class RSSScraper(BaseScraper):
                     url=url,
                     description=description,
                     posted_date=posted,
+                    location=_extract_field(LOCATION_PATTERN, description),
+                    salary=_extract_field(SALARY_PATTERN, description),
                     contract_type=detect_contract_type(title, description),
                 )
             )
