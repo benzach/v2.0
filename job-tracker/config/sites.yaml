@@ -28,10 +28,19 @@
   url: "https://www.w4mpjobs.org/RSS.aspx"
   type: "rss"
   enabled: true
+  fetch_details: true
+  detail_fetch_limit: 50
   notes: >
-    w4mpjobs publishes an official RSS feed — far more reliable than scraping
-    their ASP.NET postback-driven search page. Use this instead of HTML
-    scraping. Feed appears to include location/org info in the description.
+    w4mpjobs publishes an official RSS feed. Location and organisation come
+    directly from the feed's <category> and <author> fields. Salary is
+    rarely present in the feed itself, so fetch_details is enabled: for the
+    most recent 50 listings each run (feed is newest-first), the scraper
+    follows the job's link to JobDetails.aspx and pulls an accurate salary
+    from the structured fields there. This adds ~0.5s delay per job
+    (~25s total for 50 jobs) to be polite to the source site — bounded to
+    50 rather than all ~150+ listings since most of those are already in
+    the database from previous runs and don't need re-fetching. Increase
+    detail_fetch_limit if you want deeper backfill on a one-off run.
 
 - name: "civil-service-jobs"
   url: "https://www.civilservicejobs.service.gov.uk/csr/jobs.cgi?jcode=&location=London"
