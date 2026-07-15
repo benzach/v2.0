@@ -8,11 +8,15 @@ from scrapers.base import BaseScraper
 from scrapers.static_scraper import StaticScraper
 from scrapers.dynamic_scraper import DynamicScraper
 from scrapers.rss_scraper import RSSScraper
+from scrapers.adzuna_scraper import AdzunaScraper
+from scrapers.reed_scraper import ReedScraper
 
 SCRAPER_TYPES: dict[str, type[BaseScraper]] = {
     "static": StaticScraper,
     "dynamic": DynamicScraper,
     "rss": RSSScraper,
+    "adzuna": AdzunaScraper,
+    "reed": ReedScraper,
 }
 
 

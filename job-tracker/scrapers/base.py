@@ -13,7 +13,7 @@ class BaseScraper(ABC):
     def __init__(self, site_config: dict):
         self.config = site_config
         self.name = site_config["name"]
-        self.url = site_config["url"]
+        self.url = site_config.get("url", "")  # optional — API scrapers build their own request URLs
 
     @abstractmethod
     def scrape(self) -> list[JobListing]:

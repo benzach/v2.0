@@ -80,3 +80,33 @@
 # Add remaining ~26 sites here following the same pattern once you have
 # their URLs. Send me the URLs and I'll inspect each one and fill in
 # working selectors, same as above.
+
+# --- Tier 1: API-based sources (structured JSON, no scraping needed) ---
+
+- name: "adzuna"
+  type: "adzuna"
+  enabled: true
+  what: "graduate"
+  where: "uk"
+  results_per_page: 50
+  max_pages: 3
+  notes: >
+    Requires ADZUNA_APP_ID and ADZUNA_APP_KEY environment variables
+    (register free at https://developer.adzuna.com/signup). Keyword-based
+    targeting since Adzuna has no dedicated graduate filter — "what:
+    graduate" catches most relevant listings but may need refinement
+    (e.g. excluding senior roles that mention "graduate scheme" as a
+    past qualification rather than the role itself).
+
+- name: "reed"
+  type: "reed"
+  enabled: true
+  keywords: ""
+  locationName: ""
+  graduate_only: true
+  results_to_take: 100
+  notes: >
+    Requires REED_API_KEY environment variable (register free at
+    https://www.reed.co.uk/developers/jobseeker). Uses Reed's built-in
+    graduate=true filter — genuinely graduate-targeted, not keyword-based
+    guessing. Best Tier 1 source for this use case.
